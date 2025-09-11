@@ -5,3 +5,7 @@
 ## v1.0.1
 
 - readme change with version
+
+## v1.0.2
+
+- shold be in release log
