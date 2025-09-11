@@ -15,16 +15,14 @@ module.exports = {
       context.logger.log(
         `✅ Tag ${tagName} already exists AND version file matches. Skipping release completely.`
       );
-
-      // Mark that no release should happen
       context.skipRelease = true;
-      return false; // tells semantic-release "no release"
+      return false;
     } catch {
       context.logger.log(`🚀 Tag ${tagName} does not exist, release will proceed.`);
     }
 
     context.nextRelease = { version, notes: "" };
-    return "patch"; // must return a valid semver type, but version comes from file
+    return "patch"; // must return something semantic-release accepts
   },
 
   generateNotes: async (pluginConfig, context) => {
@@ -38,9 +36,13 @@ module.exports = {
     context.logger.log(`📝 Last commit message: "${commitMsg}"`);
 
     const changelogFile = "CHANGELOG.md";
-    let changelog = fs.existsSync(changelogFile)
-      ? fs.readFileSync(changelogFile, "utf-8")
-      : "# Changelog\n\nAll notable changes will be documented here.\n";
+    let changelog;
+
+    if (fs.existsSync(changelogFile)) {
+      changelog = fs.readFileSync(changelogFile, "utf-8");
+    } else {
+      changelog = "# Changelog\n\nAll notable changes will be documented here.\n";
+    }
 
     const entry = `\n## v${version}\n\n- ${commitMsg}\n`;
 
@@ -68,9 +70,7 @@ module.exports = {
     }
 
     execSync("git add CHANGELOG.md");
-    execSync(
-      `git commit -m "chore(release): update changelog for v${context.nextRelease.version}"`
-    );
+    execSync(`git commit -m "docs: update CHANGELOG.md"`);
     context.logger.log("📦 Committed CHANGELOG.md");
   },
 
