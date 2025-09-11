@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hello"
+version = "0.0.0-dev"
+description = "A simple Hello World Python app with semantic-release"
+authors = [{name = "Your Name", email = "you@example.com"}]
