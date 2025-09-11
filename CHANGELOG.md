@@ -10,3 +10,7 @@
 ## v1.0.4
 
 - just version update
+
+## v1.0.5
+
+- deleted package
