@@ -6,4 +6,3 @@ via a plain text `version` file.
 ### Run app
 ```bash
 python -m hello.main
-
