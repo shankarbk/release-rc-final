@@ -10,3 +10,7 @@
 ## v1.0.9
 
 - Only version
+
+## v1.0.10
+
+- docs: update CHANGELOG.md
