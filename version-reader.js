@@ -1,17 +1,37 @@
-const fs = require("fs");
-const { execSync } = require("child_process");
+const fs = require("fs").promises;
+const { existsSync } = require("fs");
+const { execFile } = require("child_process");
+
+const DEFAULT_VERSION_FILE = "version";
+const CHANGELOG_FILE = "CHANGELOG.md";
+const CHANGELOG_HEADER = "# Changelog\n\nAll notable changes will be documented here.\n";
+const CHANGELOG_COMMIT_MSG = "docs: update CHANGELOG.md";
+
+/**
+ * Run a git command asynchronously with proper error handling
+ */
+function runGitCommand(args) {
+  return new Promise((resolve, reject) => {
+    execFile("git", args, { encoding: "utf-8" }, (err, stdout) => {
+      if (err) {
+        reject(new Error(`Git command failed: git ${args.join(" ")} → ${err.message}`));
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+  });
+}
 
 module.exports = {
   analyzeCommits: async (pluginConfig, context) => {
-    const file = pluginConfig.file || "version";
-    const version = fs.readFileSync(file, "utf-8").trim();
+    const file = pluginConfig.file || DEFAULT_VERSION_FILE;
+    const version = (await fs.readFile(file, "utf-8")).trim();
     const tagName = `v${version}`;
 
     context.logger.log(`📖 Using version ${version} from ${file}`);
 
-    // Check if tag already exists
     try {
-      execSync(`git rev-parse ${tagName}`, { stdio: "ignore" });
+      await runGitCommand(["rev-parse", tagName]);
       context.logger.log(
         `✅ Tag ${tagName} already exists AND version file matches. Skipping release completely.`
       );
@@ -22,7 +42,7 @@ module.exports = {
     }
 
     context.nextRelease = { version, notes: "" };
-    return "patch"; // must return something semantic-release accepts
+    return "patch"; // semantic-release requires a valid release type
   },
 
   generateNotes: async (pluginConfig, context) => {
@@ -31,17 +51,15 @@ module.exports = {
       return "";
     }
 
-    const version = context.nextRelease.version;
-    const commitMsg = execSync("git log -1 --pretty=%B").toString().trim();
+    const { version } = context.nextRelease;
+    const commitMsg = await runGitCommand(["log", "-1", "--pretty=%B"]);
     context.logger.log(`📝 Last commit message: "${commitMsg}"`);
 
-    const changelogFile = "CHANGELOG.md";
     let changelog;
-
-    if (fs.existsSync(changelogFile)) {
-      changelog = fs.readFileSync(changelogFile, "utf-8");
+    if (existsSync(CHANGELOG_FILE)) {
+      changelog = await fs.readFile(CHANGELOG_FILE, "utf-8");
     } else {
-      changelog = "# Changelog\n\nAll notable changes will be documented here.\n";
+      changelog = CHANGELOG_HEADER;
     }
 
     const entry = `\n## v${version}\n\n- ${commitMsg}\n`;
@@ -52,7 +70,7 @@ module.exports = {
       return "";
     }
 
-    fs.writeFileSync(changelogFile, changelog + entry);
+    await fs.writeFile(CHANGELOG_FILE, changelog + entry, "utf-8");
     context.logger.log(`✅ Appended changelog entry for v${version}`);
     context.skipCommit = false;
     return entry;
@@ -69,16 +87,19 @@ module.exports = {
       return;
     }
 
-    execSync("git add CHANGELOG.md");
-    execSync(`git commit -m "docs: update CHANGELOG.md"`);
-    context.logger.log("📦 Committed CHANGELOG.md");
+    try {
+      await runGitCommand(["add", CHANGELOG_FILE]);
+      await runGitCommand(["commit", "-m", CHANGELOG_COMMIT_MSG]);
+      context.logger.log("📦 Committed CHANGELOG.md");
+    } catch (err) {
+      context.logger.error(`❌ Failed to commit CHANGELOG.md: ${err.message}`);
+      throw err;
+    }
   },
 
   publish: async (pluginConfig, context) => {
     if (context.skipRelease) {
       context.logger.log("⏩ Skipping publish (release disabled).");
-      return;
     }
-    return;
   },
 };
