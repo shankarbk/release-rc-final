@@ -14,3 +14,7 @@
 ## v1.0.10
 
 - docs: update CHANGELOG.md
+
+## v1.0.11
+
+- new version 1.0.11
